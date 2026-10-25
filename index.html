@@ -51,8 +51,26 @@ button:hover{background:#b5e46f}
 .ctrl{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
 .tog{padding:18px;font-size:1.15rem;background:#e0d9c3}
 .tog:disabled{opacity:.45;cursor:not-allowed}
-.tog.on.weed{background:var(--sprout)}
-.tog.on.water{background:var(--water);color:#fff}
+.tog.on.weed{background:#2e9e3a;color:#fff;box-shadow:0 0 0 3px #9fd356 inset}
+.tog.on.water{background:#1f7fc4;color:#fff;box-shadow:0 0 0 3px #8fd3f4 inset}
+.estop{width:100%;margin-top:12px;padding:20px;font-size:1.3rem;background:#d62828;color:#fff;letter-spacing:.05em}
+.estop:hover{background:#ef3b3b}
+.meters{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.meter{background:#1a150e;border-radius:8px;padding:12px}
+.mh{display:flex;justify-content:space-between;margin-bottom:8px}
+.mh b{font-size:1.3rem}
+.track{height:14px;border-radius:7px;background:#3a3326;overflow:hidden}
+.track i{display:block;height:100%;width:0;background:var(--sprout);transition:width .4s}
+.track i.w{background:var(--water)}
+.track i.low{background:#ff5a4d}
+@media (max-width:520px){.meters{grid-template-columns:1fr}}
+.help{padding-bottom:10px}
+.tblock{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.62)}
+.tbub{display:none;position:fixed;z-index:1003;width:min(340px,calc(100vw - 16px));background:#fffdf6;color:#1d1a14;border:3px solid #ffe14d;border-radius:10px;padding:14px;box-shadow:0 6px 24px rgba(0,0,0,.4)}
+.tbub p{margin:8px 0 12px;line-height:1.6}
+.tb{display:flex;gap:8px}
+.ghost{background:#e0d9c3}
+.tour-hi{position:relative;z-index:1002;outline:4px solid #ffe14d;outline-offset:3px;box-shadow:0 0 22px 8px rgba(255,225,77,.75)}
 footer{background:var(--soil);color:#b3ac98;text-align:center;padding:20px;margin-top:30px;font-size:.9rem}
 </style>
 </head>
@@ -64,7 +82,6 @@ footer{background:var(--soil);color:#b3ac98;text-align:center;padding:20px;margi
     <nav><a href="#live">即時影像</a><a href="#intro">功能</a><a href="#how">製作過程</a><a href="#team">團隊</a></nav>
   </div>
 </header>
-
 <main class="wrap">
   <div class="hero">
     <!-- ✏️ 修改：把下面的標語換成你們自己的 -->
@@ -87,8 +104,13 @@ footer{background:var(--soil);color:#b3ac98;text-align:center;padding:20px;margi
         <span class="status" id="st">未連線</span>
       </div>
       <div class="ctrl">
-        <button class="tog weed" id="weed" disabled>除草：關</button>
-        <button class="tog water" id="water" disabled>澆水：關</button>
+        <button class="tog weed" id="weed">除草：關</button>
+        <button class="tog water" id="water">澆水：關</button>
+      </div>
+      <button id="estop" class="estop">緊急停止（整台車）</button>
+      <div class="meters">
+        <div class="meter"><div class="mh"><span>電量</span><b id="batV">—</b></div><div class="track"><i id="batB"></i></div></div>
+        <div class="meter"><div class="mh"><span>水量</span><b id="watV">—</b></div><div class="track"><i id="watB" class="w"></i></div></div>
       </div>
       </div>
   </section>
@@ -128,18 +150,32 @@ footer{background:var(--soil);color:#b3ac98;text-align:center;padding:20px;margi
   </section>
 </main>
 
+<section class="wrap help">
+  <h2>使用教學</h2>
+  <p>第一次用嗎？按下面的按鈕，我們會一個一個帶你按，教學中按按鈕不會真的控制車子。</p>
+  <button id="helpBtn">開始教學</button>
+</section>
+
+<div id="tBlock" class="tblock"></div>
+<div id="tBub" class="tbub" role="dialog" aria-live="polite">
+  <div class="th"><span id="tArrow"></span><b id="tTitle"></b></div>
+  <p id="tText"></p>
+  <div class="tb"><button id="tNext">下一步</button><button id="tEnd" class="ghost">結束教學</button></div>
+</div>
+
 <footer>農業智慧車｜發明展作品</footer>
 
 <script>
 /* ✏️ 這裡可以改：車子的網路位置 */
 const STREAM_PORT=81, STREAM_PATH='/stream';   // 影像：http://IP:81/stream
+const STATUS_PATH='/status';                    // 狀態：http://IP/status 回傳 {"battery":80,"water":60}
 const CMD_PATH='/control';                      // 指令：http://IP/control?device=weed&state=1
 const cam=document.getElementById('cam'),msg=document.getElementById('msg'),
       st=document.getElementById('st'),ipEl=document.getElementById('ip');
 const btns={weed:document.getElementById('weed'),water:document.getElementById('water')};
 const names={weed:'除草',water:'澆水'}; const state={weed:0,water:0};
 let ip='';
-function setCtrl(on){Object.values(btns).forEach(b=>b.disabled=!on)}
+function setCtrl(on){}
 function connect(){
   ip=ipEl.value.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'');
   if(!ip){msg.style.display='block';msg.textContent='請先輸入車子的 IP。';return}
@@ -148,22 +184,130 @@ function connect(){
   st.textContent='連線中…';cam.style.display='block';
   cam.src='http://'+ip+':'+STREAM_PORT+STREAM_PATH+'?t='+Date.now();
 }
-cam.onload=()=>{msg.style.display='none';st.textContent='已連線';setCtrl(true)};
+cam.onload=()=>{msg.style.display='none';st.textContent='已連線';setCtrl(true);if(!poll)startPoll()};
 cam.onerror=()=>{cam.style.display='none';msg.style.display='block';setCtrl(false);
   msg.textContent='連不上。請確認車子已開機、和這台電腦連同一個 Wi-Fi、IP 正確。';st.textContent='連線失敗'};
 document.getElementById('go').onclick=connect;
 document.getElementById('stop').onclick=()=>{
   ['weed','water'].forEach(k=>{if(state[k])send(k,0)});
-  cam.removeAttribute('src');cam.style.display='none';setCtrl(false);
+  stopPoll();cam.removeAttribute('src');cam.style.display='none';setCtrl(false);
   msg.style.display='block';msg.textContent='已中斷連線。';st.textContent='未連線'};
+function setBtn(k,v){
+  state[k]=v;btns[k].classList.toggle('on',!!v);
+  btns[k].textContent=names[k]+'：'+(v?'開':'關');
+}
 async function send(k,v){
+  const prev=state[k];
+  setBtn(k,v);                       // 先立刻變色，讓人知道有按到
+  if(!ip||tour){st.textContent=tour?'教學中：不會真的控制車子':'未連線：只是示範，車子不會動';return}
   try{
     await fetch('http://'+ip+CMD_PATH+'?device='+k+'&state='+v,{mode:'no-cors'});
-    state[k]=v;btns[k].classList.toggle('on',!!v);
-    btns[k].textContent=names[k]+'：'+(v?'開':'關');
-  }catch(e){st.textContent='指令送出失敗'}
+    st.textContent='已送出：'+names[k]+(v?'開':'關');
+  }catch(e){
+    setBtn(k,prev);st.textContent='指令送出失敗，車子沒有反應';
+  }
 }
+
+let poll=null,fails=0;
+function setMeter(idV,idB,v){
+  const t=document.getElementById(idV),b=document.getElementById(idB);
+  if(typeof v!=='number'||isNaN(v)){t.textContent='—';b.style.width='0';return}
+  v=Math.max(0,Math.min(100,Math.round(v)));
+  t.textContent=v+'%';b.style.width=v+'%';b.classList.toggle('low',v<20);
+}
+async function readStatus(){
+  try{
+    const r=await fetch('http://'+ip+STATUS_PATH,{cache:'no-store'});
+    const d=await r.json();fails=0;
+    setMeter('batV','batB',Number(d.battery));setMeter('watV','watB',Number(d.water));
+  }catch(e){
+    if(++fails>=3){setMeter('batV','batB',NaN);setMeter('watV','watB',NaN)}
+  }
+}
+function startPoll(){stopPoll();readStatus();poll=setInterval(readStatus,2000)}
+function stopPoll(){if(poll){clearInterval(poll);poll=null}setMeter('batV','batB',NaN);setMeter('watV','watB',NaN)}
+async function emergency(){
+  if(!ip||tour){['weed','water'].forEach(k=>setBtn(k,0));st.textContent=tour?'教學中：不會真的控制車子':'未連線：只是示範，車子不會動';return}
+  // 連送 3 次，確保車子收到
+  for(let i=0;i<3;i++){
+    try{await fetch('http://'+ip+CMD_PATH+'?device=stop&state=1',{mode:'no-cors'})}catch(e){}
+  }
+  ['weed','water'].forEach(k=>setBtn(k,0));
+  st.textContent='已緊急停止';
+}
+document.getElementById('estop').onclick=emergency;
 Object.keys(btns).forEach(k=>btns[k].onclick=()=>send(k,state[k]?0:1));
+
+/* ===== 互動教學：一步一步帶著按 ===== */
+let tour=false,tStep=-1,tCleanup=null;
+const $=id=>document.getElementById(id);
+const STEPS=[
+ {t:['.screen'],title:'車前影像',text:'這裡會顯示車子前方的即時畫面，連上車子後才會出現。'},
+ {t:['#ip','#go'],press:'#go',title:'連線',text:'先在這裡輸入車子的 IP，再按發亮的「連線」。（還沒有車子也沒關係，直接按看看）',after:'連線成功，影像就會出現，下面也會開始顯示電量和水量。連不上的話，畫面會告訴你原因。'},
+ {t:['#stop'],press:'#stop',title:'中斷',text:'想結束時，按發亮的「中斷」。',after:'影像關掉了，而且除草和澆水也會一起自動關掉。'},
+ {t:['#weed'],press:'#weed',title:'除草',text:'按一下發亮的「除草」。',after:'按鈕變成綠色，代表除草裝置開始動了。再按一次就會關掉。'},
+ {t:['#water'],press:'#water',title:'澆水',text:'按一下發亮的「澆水」。',after:'按鈕變成藍色，代表開始噴水了。再按一次就會關掉。'},
+ {t:['#estop'],press:'#estop',title:'緊急停止',text:'出狀況時，就按這顆發亮的紅色按鈕。',after:'整台車馬上停下來，除草和澆水都會關掉，按鈕也變回原色。'},
+ {t:['.meters'],title:'電量和水量',text:'這裡顯示車子還剩多少電和水。低於 20% 會變紅色，要補充；顯示「—」代表還沒收到資料。'}
+];
+const q1=sel=>document.querySelector(sel);
+function clearHi(){
+  document.querySelectorAll('.tour-hi').forEach(e=>e.classList.remove('tour-hi'));
+  if(tCleanup){tCleanup();tCleanup=null}
+}
+function place(){
+  if(tStep<0)return;
+  const rs=STEPS[tStep].t.map(x=>q1(x).getBoundingClientRect());
+  const top=Math.min(...rs.map(r=>r.top)),bot=Math.max(...rs.map(r=>r.bottom)),left=Math.min(...rs.map(r=>r.left));
+  const b=$('tBub'),h=b.offsetHeight,w=b.offsetWidth,vh=innerHeight;
+  let y,arrow='';
+  if(bot+12+h<=vh-8){y=bot+12;arrow='👆 '}
+  else if(top-12-h>=8){y=top-12-h;arrow='👇 '}
+  else{y=vh-h-8}
+  b.style.top=y+'px';
+  b.style.left=Math.max(8,Math.min(left,innerWidth-w-8))+'px';
+  $('tArrow').textContent=arrow;
+}
+function showStep(i){
+  clearHi();
+  if(i>=STEPS.length){endTour();return}
+  tStep=i;
+  const s=STEPS[i],last=i===STEPS.length-1,nx=$('tNext');
+  s.t.forEach(x=>q1(x).classList.add('tour-hi'));
+  q1(s.t[0]).scrollIntoView({block:'center',behavior:'instant'});
+  $('tTitle').textContent='第 '+(i+1)+' 步／共 '+STEPS.length+' 步：'+s.title;
+  $('tText').textContent=s.text;
+  nx.textContent=last?'完成':'下一步';
+  nx.style.display=s.press?'none':'';
+  if(s.press){
+    const b=q1(s.press);
+    const h=()=>{
+      $('tText').textContent=s.after;
+      nx.style.display='';
+      place();
+    };
+    b.addEventListener('click',h);
+    tCleanup=()=>b.removeEventListener('click',h);
+  }
+  place();
+}
+function startTour(){
+  ['weed','water'].forEach(k=>{if(state[k])send(k,0)});   // 開始前先把真的車子關掉
+  tour=true;
+  $('tBlock').style.display='block';$('tBub').style.display='block';
+  showStep(0);
+}
+function endTour(){
+  clearHi();tStep=-1;tour=false;
+  $('tBlock').style.display='none';$('tBub').style.display='none';
+  ['weed','water'].forEach(k=>setBtn(k,0));
+  st.textContent='教學結束';
+}
+$('helpBtn').onclick=startTour;
+$('tNext').onclick=()=>showStep(tStep+1);
+$('tEnd').onclick=endTour;
+addEventListener('keydown',e=>{if(e.key==='Escape'&&tour)endTour()});
+addEventListener('scroll',place,true);addEventListener('resize',place);
 </script>
 </body>
 </html>
