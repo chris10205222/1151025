@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>農業智慧車｜發明展</title>
+<style>
+:root{
+  --soil:#2b2118; --leaf:#3f7d3a; --sprout:#9fd356; --water:#3aa0c8; --paper:#f3f0e6; --ink:#1d1a14; --card:#fffdf6;
+  --bg:var(--paper); --fg:var(--ink); --muted:#5d584b; --line:#d9d3bf;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#17140f;--fg:#efeadb;--muted:#b3ac98;--card:#221d15;--line:#3a3326}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;line-height:1.75}
+a{color:inherit}
+.wrap{max-width:1000px;margin:0 auto;padding:0 20px}
+header{background:var(--soil);color:#f3f0e6;border-bottom:6px solid var(--leaf)}
+header .wrap{display:flex;gap:16px;justify-content:space-between;align-items:center;padding-top:14px;padding-bottom:14px;flex-wrap:wrap}
+header b{font-size:1.1rem}
+nav a{margin-left:16px;text-decoration:none;font-size:.95rem;opacity:.85}
+nav a:hover{opacity:1;color:var(--sprout)}
+.hero{padding:56px 0 36px}
+.hero h1{font-size:clamp(2.2rem,7vw,4rem);line-height:1.15;margin:0 0 14px;letter-spacing:.02em}
+.hero p{font-size:1.15rem;max-width:34em;color:var(--muted);margin:0}
+section{padding:36px 0}
+h2{font-size:1.6rem;margin:0 0 16px;padding-left:12px;border-left:6px solid var(--leaf)}
+.live{background:var(--soil);color:#f3f0e6;border-radius:10px;padding:16px}
+.screen{position:relative;aspect-ratio:4/3;background:#0c0a07;border-radius:6px;overflow:hidden;display:grid;place-items:center}
+.screen img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none}
+.screen .msg{padding:20px;text-align:center;color:#b3ac98;max-width:26em}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.bar input{flex:1;min-width:200px;padding:10px;border-radius:6px;border:1px solid #5a4d38;background:#1a150e;color:#f3f0e6;font-size:1rem}
+button{padding:10px 18px;border:0;border-radius:6px;background:var(--sprout);color:#1d1a14;font-weight:700;font-size:1rem;cursor:pointer}
+button:hover{background:#b5e46f}
+:focus-visible{outline:3px solid var(--water);outline-offset:2px}
+.status{font-size:.9rem;color:#b3ac98;margin-left:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px}
+.card h3{margin:0 0 8px;font-size:1.2rem}
+.card.weed{border-top:5px solid var(--leaf)}
+.card.water{border-top:5px solid var(--water)}
+.card.cam{border-top:5px solid var(--sprout)}
+.steps{counter-reset:s;list-style:none;padding:0;margin:0}
+.steps li{counter-increment:s;padding:10px 0 10px 48px;position:relative;border-bottom:1px dashed var(--line)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:10px;width:32px;height:32px;border-radius:50%;background:var(--leaf);color:#fff;display:grid;place-items:center;font-weight:700}
+.team{display:flex;flex-wrap:wrap;gap:10px}
+.team span{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 16px}
+.ctrl{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.tog{padding:18px;font-size:1.15rem;background:#e0d9c3}
+.tog:disabled{opacity:.45;cursor:not-allowed}
+.tog.on.weed{background:var(--sprout)}
+.tog.on.water{background:var(--water);color:#fff}
+footer{background:var(--soil);color:#b3ac98;text-align:center;padding:20px;margin-top:30px;font-size:.9rem}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <b>農業智慧車</b>
+    <nav><a href="#live">即時影像</a><a href="#intro">功能</a><a href="#how">製作過程</a><a href="#team">團隊</a></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <!-- ✏️ 修改：把下面的標語換成你們自己的 -->
+    <h1>會除草、會澆水的<br>農業智慧車</h1>
+    <p>一台小車子，自己開進田裡，幫農夫除草、澆水，還能把車前的畫面直接傳到網頁上。</p>
+  </div>
+
+  <section id="live">
+    <h2>車前即時影像</h2>
+    <div class="live">
+      <div class="screen">
+        <img id="cam" alt="農業智慧車前方的即時影像">
+        <div class="msg" id="msg">尚未連線。請在下方輸入車子鏡頭的網址，再按「連線」。</div>
+      </div>
+      <div class="bar">
+        <!-- ✏️ 修改：value 換成車子的 IP，例如 192.168.1.50 -->
+        <input id="ip" value="" placeholder="車子 IP，例如 192.168.1.50" aria-label="車子 IP">
+        <button id="go">連線</button>
+        <button id="stop" style="background:#e0d9c3">中斷</button>
+        <span class="status" id="st">未連線</span>
+      </div>
+      <div class="ctrl">
+        <button class="tog weed" id="weed" disabled>除草：關</button>
+        <button class="tog water" id="water" disabled>澆水：關</button>
+      </div>
+      </div>
+  </section>
+
+  <section id="intro">
+    <h2>主要功能</h2>
+    <div class="grid">
+      <div class="card weed"><h3>自動除草</h3><p>車子行駛時，底部的除草裝置會清除雜草，減少農藥和人工。</p></div>
+      <div class="card water"><h3>定點澆水</h3><p>需要澆水的地方，車子停下來噴水，水不浪費。</p></div>
+      <div class="card cam"><h3>前方影像</h3><p>車前的鏡頭把畫面傳到網頁，在遠端也看得到田裡的狀況。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>發明動機</h2>
+    <p>農村人口愈來愈少，農夫年紀愈來愈大，除草和澆水又累又花時間。我們想做一台小車子，把這些重複的工作交給它。</p>
+    <!-- ✏️ 修改：換成你們真正的動機 -->
+  </section>
+
+  <section id="how">
+    <h2>製作過程</h2>
+    <ol class="steps">
+      <li>設計車體，選擇馬達、輪子和控制板。</li>
+      <li>裝上除草裝置和澆水水箱、水泵。</li>
+      <li>裝上鏡頭，測試車前影像傳到網頁。</li>
+      <li>在模擬農地測試，調整速度和噴水量。</li>
+    </ol>
+    <!-- ✏️ 修改：換成你們實際的步驟，可以加照片 -->
+  </section>
+
+  <section id="team">
+    <h2>團隊成員</h2>
+    <div class="team">
+      <span>林彧辰</span><span>陳昱圻</span><span>林承樂</span>
+    </div>
+    <p style="color:var(--muted)">指導老師：陳榮政</p>
+  </section>
+</main>
+
+<footer>農業智慧車｜發明展作品</footer>
+
+<script>
+/* ✏️ 這裡可以改：車子的網路位置 */
+const STREAM_PORT=81, STREAM_PATH='/stream';   // 影像：http://IP:81/stream
+const CMD_PATH='/control';                      // 指令：http://IP/control?device=weed&state=1
+const cam=document.getElementById('cam'),msg=document.getElementById('msg'),
+      st=document.getElementById('st'),ipEl=document.getElementById('ip');
+const btns={weed:document.getElementById('weed'),water:document.getElementById('water')};
+const names={weed:'除草',water:'澆水'}; const state={weed:0,water:0};
+let ip='';
+function setCtrl(on){Object.values(btns).forEach(b=>b.disabled=!on)}
+function connect(){
+  ip=ipEl.value.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'');
+  if(!ip){msg.style.display='block';msg.textContent='請先輸入車子的 IP。';return}
+  if(location.protocol==='https:'){msg.style.display='block';
+    msg.textContent='此網站是 https，瀏覽器會擋掉車子的 http 連線。請改用電腦直接開 index.html。';return}
+  st.textContent='連線中…';cam.style.display='block';
+  cam.src='http://'+ip+':'+STREAM_PORT+STREAM_PATH+'?t='+Date.now();
+}
+cam.onload=()=>{msg.style.display='none';st.textContent='已連線';setCtrl(true)};
+cam.onerror=()=>{cam.style.display='none';msg.style.display='block';setCtrl(false);
+  msg.textContent='連不上。請確認車子已開機、和這台電腦連同一個 Wi-Fi、IP 正確。';st.textContent='連線失敗'};
+document.getElementById('go').onclick=connect;
+document.getElementById('stop').onclick=()=>{
+  ['weed','water'].forEach(k=>{if(state[k])send(k,0)});
+  cam.removeAttribute('src');cam.style.display='none';setCtrl(false);
+  msg.style.display='block';msg.textContent='已中斷連線。';st.textContent='未連線'};
+async function send(k,v){
+  try{
+    await fetch('http://'+ip+CMD_PATH+'?device='+k+'&state='+v,{mode:'no-cors'});
+    state[k]=v;btns[k].classList.toggle('on',!!v);
+    btns[k].textContent=names[k]+'：'+(v?'開':'關');
+  }catch(e){st.textContent='指令送出失敗'}
+}
+Object.keys(btns).forEach(k=>btns[k].onclick=()=>send(k,state[k]?0:1));
+</script>
+</body>
+</html>
